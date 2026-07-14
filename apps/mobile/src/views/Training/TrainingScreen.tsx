@@ -3,15 +3,16 @@ import { useMemo, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
 import { demoQuestions, demoTopics, demoUserProfile } from '../../data/demoData';
-import type { DriverProfile, MistakeStatus, Question } from '../../domain/codequest';
+import type { DriverProfile, Question } from '../../domain/codequest';
 
 import {
   DEFAULT_CORRECTION_STATUS,
-  MISTAKE_STATUS_OPTIONS,
   buildCorrectionItems,
   buildInitialCorrectionStatuses,
+  buildViewedCorrectionStatuses,
   calculateTrainingResult,
   formatDuration,
+  getAutomaticCorrectionStatusAfterAnswer,
   getDifficultyLabel,
   getMistakeStatusOption,
   type CorrectionStatusByQuestionId,
@@ -44,6 +45,7 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
     return demoQuestions.filter((question) => reviewQuestionIds.includes(question.id));
   }, [reviewQuestionIds]);
 
+  const isReviewSession = reviewQuestionIds !== null;
   const currentQuestion = questions[currentQuestionIndex];
   const currentTopic = useMemo(
     () => demoTopics.find((topic) => topic.id === currentQuestion.topicId),
@@ -69,13 +71,13 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
 
     setAnswerRecords(nextAnswerRecords);
     setCorrectionStatuses((statuses) => {
-      if (isCorrect) {
+      if (isCorrect && !isReviewSession) {
         return statuses;
       }
 
       return {
         ...statuses,
-        [currentQuestion.id]: statuses[currentQuestion.id] ?? DEFAULT_CORRECTION_STATUS,
+        [currentQuestion.id]: getAutomaticCorrectionStatusAfterAnswer(isCorrect),
       };
     });
     setSelectedAnswerId(null);
@@ -89,7 +91,10 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
     setCurrentQuestionIndex((index) => index + 1);
   }
 
-  function resetTraining(nextReviewQuestionIds: string[] | null) {
+  function resetTraining(
+    nextReviewQuestionIds: string[] | null,
+    options?: { keepCorrectionStatuses?: boolean },
+  ) {
     setReviewQuestionIds(nextReviewQuestionIds);
     setCurrentQuestionIndex(0);
     setSelectedAnswerId(null);
@@ -98,7 +103,9 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
     setCompletedDurationSeconds(null);
     setIsFinished(false);
     setIsViewingCorrections(false);
-    setCorrectionStatuses({});
+    if (!options?.keepCorrectionStatuses) {
+      setCorrectionStatuses({});
+    }
   }
 
   function getMissedQuestionIds() {
@@ -112,7 +119,7 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
       return;
     }
 
-    resetTraining(missedQuestionIds);
+    resetTraining(missedQuestionIds, { keepCorrectionStatuses: true });
   }
 
   function handleViewCorrections() {
@@ -122,18 +129,13 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
       return;
     }
 
-    setCorrectionStatuses((statuses) => ({
-      ...buildInitialCorrectionStatuses(answerRecords),
-      ...statuses,
-    }));
+    setCorrectionStatuses((statuses) =>
+      buildViewedCorrectionStatuses(answerRecords, {
+        ...buildInitialCorrectionStatuses(answerRecords),
+        ...statuses,
+      }),
+    );
     setIsViewingCorrections(true);
-  }
-
-  function handleChangeCorrectionStatus(questionId: string, status: MistakeStatus) {
-    setCorrectionStatuses((statuses) => ({
-      ...statuses,
-      [questionId]: status,
-    }));
   }
 
   if (isFinished && isViewingCorrections) {
@@ -141,7 +143,6 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
       <TrainingCorrections
         answerRecords={answerRecords}
         correctionStatuses={correctionStatuses}
-        onChangeCorrectionStatus={handleChangeCorrectionStatus}
         onBackToResult={() => setIsViewingCorrections(false)}
         onExit={onExit}
         onNewSeries={() => resetTraining(null)}
@@ -245,7 +246,6 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
 function TrainingCorrections({
   answerRecords,
   correctionStatuses,
-  onChangeCorrectionStatus,
   onBackToResult,
   onExit,
   onNewSeries,
@@ -254,7 +254,6 @@ function TrainingCorrections({
 }: {
   answerRecords: TrainingAnswerRecord[];
   correctionStatuses: CorrectionStatusByQuestionId;
-  onChangeCorrectionStatus: (questionId: string, status: MistakeStatus) => void;
   onBackToResult: () => void;
   onExit: () => void;
   onNewSeries: () => void;
@@ -295,7 +294,6 @@ function TrainingCorrections({
               key={item.id}
               correction={item}
               index={index}
-              onChangeStatus={(status) => onChangeCorrectionStatus(item.id, status)}
               status={correctionStatuses[item.id] ?? DEFAULT_CORRECTION_STATUS}
             />
           ))
@@ -462,13 +460,11 @@ function TrainingResult({
 function CorrectionCard({
   correction,
   index,
-  onChangeStatus,
   status,
 }: {
   correction: TrainingCorrectionItem;
   index: number;
-  onChangeStatus: (status: MistakeStatus) => void;
-  status: MistakeStatus;
+  status: NonNullable<CorrectionStatusByQuestionId[string]>;
 }) {
   const statusOption = getMistakeStatusOption(status);
 
@@ -503,36 +499,7 @@ function CorrectionCard({
         </View>
         <Text style={styles.correctionStatusDescription}>{statusOption.description}</Text>
         <Text style={styles.correctionStatusHint}>{statusOption.nextReviewHint}</Text>
-
-        <View style={styles.correctionStatusOptions}>
-          {MISTAKE_STATUS_OPTIONS.map((option) => {
-            const isSelected = option.status === status;
-
-            return (
-              <Pressable
-                key={option.status}
-                style={({ pressed }) => [
-                  styles.correctionStatusButton,
-                  isSelected && styles.correctionStatusButtonSelected,
-                  pressed && styles.correctionStatusButtonPressed,
-                ]}
-                onPress={() => onChangeStatus(option.status)}
-                accessibilityLabel={`Définir le statut : ${option.title}`}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isSelected }}
-              >
-                <Text
-                  style={[
-                    styles.correctionStatusButtonText,
-                    isSelected && styles.correctionStatusButtonTextSelected,
-                  ]}
-                >
-                  {option.title}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Text style={styles.correctionStatusAutoText}>Statut mis à jour automatiquement par CodeQuest.</Text>
       </View>
     </View>
   );

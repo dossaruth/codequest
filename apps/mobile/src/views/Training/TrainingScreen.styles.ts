@@ -437,36 +437,10 @@ export const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 17,
   },
-  correctionStatusOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 2,
-  },
-  correctionStatusButton: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    borderWidth: 1,
-    minHeight: 40,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  correctionStatusButtonPressed: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#93C5FD',
-  },
-  correctionStatusButtonSelected: {
-    backgroundColor: '#DBEAFE',
-    borderColor: '#2563EB',
-  },
-  correctionStatusButtonText: {
-    color: '#374151',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  correctionStatusButtonTextSelected: {
+  correctionStatusAutoText: {
     color: '#1D4ED8',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
   },
 });

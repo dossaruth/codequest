@@ -52,9 +52,11 @@ export type TrainingResultSummary = {
 const XP_PER_CORRECT_ANSWER = 12;
 const PERFECT_SERIES_BONUS_XP = 20;
 const TOPIC_STRENGTH_THRESHOLD = 80;
-export const DEFAULT_CORRECTION_STATUS: MistakeStatus = 'to_review';
+export const DEFAULT_CORRECTION_STATUS: MistakeStatus = 'not_understood';
+const VIEWED_CORRECTION_STATUS: MistakeStatus = 'to_review';
+const MASTERED_CORRECTION_STATUS: MistakeStatus = 'mastered';
 
-export const MISTAKE_STATUS_OPTIONS: MistakeStatusOption[] = [
+export const MISTAKE_STATUS_DETAILS: MistakeStatusOption[] = [
   {
     description: 'La notion doit être reprise calmement avant une nouvelle série.',
     nextReviewHint: 'À revoir demain',
@@ -142,11 +144,31 @@ export function buildInitialCorrectionStatuses(
   }, {});
 }
 
+export function buildViewedCorrectionStatuses(
+  answerRecords: TrainingAnswerRecord[],
+  currentStatuses: CorrectionStatusByQuestionId,
+): CorrectionStatusByQuestionId {
+  return answerRecords.reduce<CorrectionStatusByQuestionId>(
+    (statuses, answer) => {
+      if (!answer.isCorrect) {
+        statuses[answer.questionId] = VIEWED_CORRECTION_STATUS;
+      }
+
+      return statuses;
+    },
+    { ...currentStatuses },
+  );
+}
+
+export function getAutomaticCorrectionStatusAfterAnswer(isCorrect: boolean): MistakeStatus {
+  return isCorrect ? MASTERED_CORRECTION_STATUS : DEFAULT_CORRECTION_STATUS;
+}
+
 export function getMistakeStatusOption(status: MistakeStatus) {
   return (
-    MISTAKE_STATUS_OPTIONS.find((option) => option.status === status) ??
-    MISTAKE_STATUS_OPTIONS.find((option) => option.status === DEFAULT_CORRECTION_STATUS) ??
-    MISTAKE_STATUS_OPTIONS[0]
+    MISTAKE_STATUS_DETAILS.find((option) => option.status === status) ??
+    MISTAKE_STATUS_DETAILS.find((option) => option.status === DEFAULT_CORRECTION_STATUS) ??
+    MISTAKE_STATUS_DETAILS[0]
   );
 }
 
