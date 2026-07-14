@@ -53,6 +53,7 @@ src/
       DashboardScreen.styles.ts
       index.ts
     Training/
+      TrainingScreen.helpers.ts
       TrainingScreen.tsx
       TrainingScreen.styles.ts
       index.ts

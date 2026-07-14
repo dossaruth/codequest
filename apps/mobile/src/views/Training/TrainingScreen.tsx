@@ -5,34 +5,24 @@ import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import { demoQuestions, demoTopics } from '../../data/demoData';
 import type { Question } from '../../domain/codequest';
 
+import {
+  calculateTrainingResult,
+  formatDuration,
+  getDifficultyLabel,
+  type TrainingAnswerRecord,
+  type TrainingTopicResult,
+} from './TrainingScreen.helpers';
 import { styles } from './TrainingScreen.styles';
 
 type TrainingScreenProps = {
   onExit: () => void;
 };
 
-type AnswerRecord = {
-  questionId: string;
-  selectedAnswerId: string;
-  isCorrect: boolean;
-};
-
-type TopicResult = {
-  id: string;
-  label: string;
-  correctAnswers: number;
-  totalAnswers: number;
-  successRate: number;
-};
-
-const XP_PER_CORRECT_ANSWER = 12;
-const PERFECT_SERIES_BONUS_XP = 20;
-
 export function TrainingScreen({ onExit }: TrainingScreenProps) {
   const [reviewQuestionIds, setReviewQuestionIds] = useState<string[] | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
-  const [answerRecords, setAnswerRecords] = useState<AnswerRecord[]>([]);
+  const [answerRecords, setAnswerRecords] = useState<TrainingAnswerRecord[]>([]);
   const [startedAt, setStartedAt] = useState(() => Date.now());
   const [completedDurationSeconds, setCompletedDurationSeconds] = useState<number | null>(null);
   const [isFinished, setIsFinished] = useState(false);
@@ -139,7 +129,9 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
           <Text style={styles.topicLabel}>{currentTopic?.label ?? 'Thème'}</Text>
           <Text style={styles.questionText}>{currentQuestion.prompt}</Text>
           <View style={styles.difficultyBadge}>
-            <Text style={styles.difficultyText}>Difficulté : {difficultyLabel(currentQuestion)}</Text>
+            <Text style={styles.difficultyText}>
+              Difficulté : {getDifficultyLabel(currentQuestion.difficulty)}
+            </Text>
           </View>
         </View>
 
@@ -191,21 +183,16 @@ function TrainingResult({
   onReviewMistakes,
   questions,
 }: {
-  answerRecords: AnswerRecord[];
+  answerRecords: TrainingAnswerRecord[];
   durationSeconds: number;
   onExit: () => void;
   onNewSeries: () => void;
   onReviewMistakes: () => void;
   questions: Question[];
 }) {
-  const score = answerRecords.filter((answer) => answer.isCorrect).length;
   const totalQuestions = questions.length;
-  const successRate = Math.round((score / totalQuestions) * 100);
-  const xpGained = score * XP_PER_CORRECT_ANSWER + (score === totalQuestions ? PERFECT_SERIES_BONUS_XP : 0);
-  const missedAnswers = answerRecords.filter((answer) => !answer.isCorrect);
-  const topicResults = buildTopicResults(questions, answerRecords);
-  const strengths = topicResults.filter((topic) => topic.successRate >= 80);
-  const weaknesses = topicResults.filter((topic) => topic.successRate < 80);
+  const { score, successRate, xpGained, missedAnswers, strengths, weaknesses } =
+    calculateTrainingResult(questions, demoTopics, answerRecords);
   const canReviewMistakes = missedAnswers.length > 0;
 
   return (
@@ -286,7 +273,7 @@ function ResultTopicSection({
 }: {
   emptyText: string;
   title: string;
-  topics: TopicResult[];
+  topics: TrainingTopicResult[];
 }) {
   return (
     <View style={styles.resultSection}>
@@ -308,61 +295,4 @@ function ResultTopicSection({
       )}
     </View>
   );
-}
-
-function buildTopicResults(questions: Question[], answerRecords: AnswerRecord[]): TopicResult[] {
-  const results = answerRecords.reduce<Record<string, TopicResult>>((accumulator, answer) => {
-    const question = questions.find((item) => item.id === answer.questionId);
-
-    if (!question) {
-      return accumulator;
-    }
-
-    const topic = demoTopics.find((item) => item.id === question.topicId);
-    const topicLabel = topic?.label ?? 'Thème';
-    const current = accumulator[question.topicId] ?? {
-      id: question.topicId,
-      label: topicLabel,
-      correctAnswers: 0,
-      totalAnswers: 0,
-      successRate: 0,
-    };
-
-    const nextCorrectAnswers = current.correctAnswers + (answer.isCorrect ? 1 : 0);
-    const nextTotalAnswers = current.totalAnswers + 1;
-
-    accumulator[question.topicId] = {
-      ...current,
-      correctAnswers: nextCorrectAnswers,
-      totalAnswers: nextTotalAnswers,
-      successRate: Math.round((nextCorrectAnswers / nextTotalAnswers) * 100),
-    };
-
-    return accumulator;
-  }, {});
-
-  return Object.values(results);
-}
-
-function difficultyLabel(question: Question) {
-  if (question.difficulty === 'easy') {
-    return 'Facile';
-  }
-
-  if (question.difficulty === 'medium') {
-    return 'Moyenne';
-  }
-
-  return 'Difficile';
-}
-
-function formatDuration(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (minutes === 0) {
-    return `${seconds}s`;
-  }
-
-  return `${minutes}min ${seconds.toString().padStart(2, '0')}s`;
 }
