@@ -499,7 +499,6 @@ function CorrectionCard({
         </View>
         <Text style={styles.correctionStatusDescription}>{statusOption.description}</Text>
         <Text style={styles.correctionStatusHint}>{statusOption.nextReviewHint}</Text>
-        <Text style={styles.correctionStatusAutoText}>Statut mis à jour automatiquement par CodeQuest.</Text>
       </View>
     </View>
   );

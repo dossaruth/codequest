@@ -437,10 +437,4 @@ export const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 17,
   },
-  correctionStatusAutoText: {
-    color: '#1D4ED8',
-    fontSize: 12,
-    fontWeight: '800',
-    lineHeight: 17,
-  },
 });
