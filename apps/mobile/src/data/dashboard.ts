@@ -1,3 +1,10 @@
+import {
+  demoDailyMission,
+  demoReadiness,
+  demoTopics,
+  demoUserProfile,
+} from './demoData';
+
 export type DashboardTopic = {
   id: string;
   label: string;
@@ -33,35 +40,31 @@ export type DashboardData = {
   };
 };
 
+const toDashboardTopic = ({ id, label, masteryScore }: (typeof demoTopics)[number]): DashboardTopic => ({
+  id,
+  label,
+  score: masteryScore,
+});
+
 export const dashboardData: DashboardData = {
   user: {
-    firstName: 'Dona',
-    level: 14,
-    rank: 'Conducteur confirme',
-    xp: 7850,
-    nextLevelXp: 9000,
-    streakDays: 7,
+    firstName: demoUserProfile.firstName,
+    level: demoUserProfile.level,
+    rank: demoUserProfile.rank,
+    xp: demoUserProfile.xp,
+    nextLevelXp: demoUserProfile.nextLevelXp,
+    streakDays: demoUserProfile.streakDays,
   },
   readiness: {
-    score: 89,
-    examProgress: 82,
-    estimatedTrainingDays: 8,
+    score: demoReadiness.score,
+    examProgress: demoReadiness.examProgress,
+    estimatedTrainingDays: demoReadiness.estimatedTrainingDays,
   },
-  strengths: [
-    { id: 'signs', label: 'Signalisation', score: 91 },
-    { id: 'safety', label: 'Securite', score: 86 },
-  ],
-  weaknesses: [
-    { id: 'priority', label: 'Priorites', score: 64 },
-    { id: 'distance', label: 'Distances', score: 58 },
-  ],
+  strengths: demoTopics.filter((topic) => topic.masteryScore >= 80).map(toDashboardTopic),
+  weaknesses: demoTopics.filter((topic) => topic.masteryScore < 70).map(toDashboardTopic),
   dailyMission: {
-    durationMinutes: 15,
-    targetProgress: 75,
-    tasks: [
-      { id: 'priority-questions', label: '10 questions priorites', completed: true },
-      { id: 'signs-questions', label: '10 questions signalisation', completed: false },
-      { id: 'mistakes-review', label: 'Corriger 5 anciennes erreurs', completed: false },
-    ],
+    durationMinutes: demoDailyMission.durationMinutes,
+    targetProgress: demoDailyMission.targetProgress,
+    tasks: demoDailyMission.tasks,
   },
 };

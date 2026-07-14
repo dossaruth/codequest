@@ -38,6 +38,22 @@ npm run web
 npm run typecheck
 ```
 
+## Structure Actuelle
+
+```text
+src/
+  data/
+    dashboard.ts      Donnees preparees pour le tableau de bord
+    demoData.ts       Donnees locales de demonstration
+  domain/
+    codequest.ts      Types metier principaux
+  views/
+    Dashboard/
+      DashboardScreen.tsx
+      DashboardScreen.styles.ts
+      index.ts
+```
+
 ## Statut
 
-Base Expo TypeScript initialisee. Le prochain objectif est de construire le tableau de bord mobile CodeQuest.
+Base Expo TypeScript initialisee avec un premier tableau de bord et des donnees locales de demonstration.
