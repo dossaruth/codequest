@@ -1,4 +1,10 @@
-import type { MistakeStatus, Question, QuestionDifficulty, Topic } from '../../domain/codequest';
+import type {
+  CorrectionStatusByQuestionId,
+  MistakeStatus,
+  Question,
+  QuestionDifficulty,
+  Topic,
+} from '../../domain/codequest';
 
 export type TrainingAnswerRecord = {
   questionId: string;
@@ -28,8 +34,6 @@ export type TrainingCorrectionItem = {
   selectedAnswerLabel: string;
   topicLabel: string;
 };
-
-export type CorrectionStatusByQuestionId = Record<string, MistakeStatus>;
 
 export type MistakeStatusOption = {
   description: string;

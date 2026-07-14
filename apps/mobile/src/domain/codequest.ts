@@ -58,6 +58,8 @@ export type DailyMission = {
 
 export type MistakeStatus = 'not_understood' | 'to_review' | 'mastered';
 
+export type CorrectionStatusByQuestionId = Record<string, MistakeStatus>;
+
 export type Mistake = {
   id: string;
   questionId: string;

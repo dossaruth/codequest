@@ -3,6 +3,7 @@ import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
 import { dashboardData } from '../../data/dashboard';
 import type { DashboardTopic } from '../../data/dashboard';
+import type { LocalProgressState } from '../../storage/progressStorage';
 
 import { styles } from './DashboardScreen.styles';
 
@@ -10,10 +11,11 @@ const formatXp = new Intl.NumberFormat('fr-FR');
 
 type DashboardScreenProps = {
   onStartTraining: () => void;
+  progress: LocalProgressState;
 };
 
-export function DashboardScreen({ onStartTraining }: DashboardScreenProps) {
-  const xpProgress = Math.round((dashboardData.user.xp / dashboardData.user.nextLevelXp) * 100);
+export function DashboardScreen({ onStartTraining, progress }: DashboardScreenProps) {
+  const xpProgress = Math.round((progress.user.xp / progress.user.nextLevelXp) * 100);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -22,20 +24,20 @@ export function DashboardScreen({ onStartTraining }: DashboardScreenProps) {
         <View style={styles.header}>
           <View>
             <Text style={styles.eyebrow}>CodeQuest</Text>
-            <Text style={styles.title}>Bonjour {dashboardData.user.firstName}</Text>
+            <Text style={styles.title}>Bonjour {progress.user.firstName}</Text>
           </View>
           <View style={styles.streakBadge}>
-            <Text style={styles.streakValue}>{dashboardData.user.streakDays}j</Text>
+            <Text style={styles.streakValue}>{progress.user.streakDays}j</Text>
             <Text style={styles.streakLabel}>série</Text>
           </View>
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.heroLabel}>Niveau {dashboardData.user.level}</Text>
-          <Text style={styles.heroTitle}>{dashboardData.user.rank}</Text>
+          <Text style={styles.heroLabel}>Niveau {progress.user.level}</Text>
+          <Text style={styles.heroTitle}>{progress.user.rank}</Text>
           <Text style={styles.heroSubtitle}>
-            {formatXp.format(dashboardData.user.xp)} XP sur{' '}
-            {formatXp.format(dashboardData.user.nextLevelXp)} pour le prochain niveau
+            {formatXp.format(progress.user.xp)} XP sur {formatXp.format(progress.user.nextLevelXp)} pour le prochain
+            niveau
           </Text>
 
           <View style={styles.progressTrack}>
@@ -47,17 +49,17 @@ export function DashboardScreen({ onStartTraining }: DashboardScreenProps) {
         <View style={styles.statsGrid}>
           <MetricCard
             label="Maîtrise globale"
-            value={`${dashboardData.readiness.examProgress}%`}
+            value={`${progress.readiness.examProgress}%`}
             helper="Préparation actuelle"
           />
           <MetricCard
             label="CodeQuest Score"
-            value={`${dashboardData.readiness.score}/100`}
+            value={`${progress.readiness.score}/100`}
             helper="Indice de préparation"
           />
           <MetricCard
             label="Objectif estimé"
-            value={`≈ ${dashboardData.readiness.estimatedTrainingDays} jours`}
+            value={`≈ ${progress.readiness.estimatedTrainingDays} jours`}
             helper="Estimation basée sur votre progression."
           />
         </View>

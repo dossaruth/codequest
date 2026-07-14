@@ -1,9 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
 import { demoQuestions, demoTopics, demoUserProfile } from '../../data/demoData';
-import type { DriverProfile, Question } from '../../domain/codequest';
+import type { CorrectionStatusByQuestionId, DriverProfile, Question } from '../../domain/codequest';
+import {
+  applyCompletedTrainingToProgress,
+  type LocalProgressState,
+} from '../../storage/progressStorage';
 
 import {
   DEFAULT_CORRECTION_STATUS,
@@ -15,7 +19,6 @@ import {
   getAutomaticCorrectionStatusAfterAnswer,
   getDifficultyLabel,
   getMistakeStatusOption,
-  type CorrectionStatusByQuestionId,
   type TrainingAnswerRecord,
   type TrainingCorrectionItem,
   type TrainingTopicResult,
@@ -24,9 +27,11 @@ import { styles } from './TrainingScreen.styles';
 
 type TrainingScreenProps = {
   onExit: () => void;
+  onProgressChange: (progress: LocalProgressState) => void;
+  progress: LocalProgressState;
 };
 
-export function TrainingScreen({ onExit }: TrainingScreenProps) {
+export function TrainingScreen({ onExit, onProgressChange, progress }: TrainingScreenProps) {
   const [reviewQuestionIds, setReviewQuestionIds] = useState<string[] | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
@@ -35,7 +40,13 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
   const [completedDurationSeconds, setCompletedDurationSeconds] = useState<number | null>(null);
   const [isFinished, setIsFinished] = useState(false);
   const [isViewingCorrections, setIsViewingCorrections] = useState(false);
-  const [correctionStatuses, setCorrectionStatuses] = useState<CorrectionStatusByQuestionId>({});
+  const [correctionStatuses, setCorrectionStatuses] = useState<CorrectionStatusByQuestionId>(
+    progress.correctionStatuses,
+  );
+
+  useEffect(() => {
+    setCorrectionStatuses(progress.correctionStatuses);
+  }, [progress.correctionStatuses]);
 
   const questions = useMemo(() => {
     if (!reviewQuestionIds) {
@@ -51,8 +62,15 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
     () => demoTopics.find((topic) => topic.id === currentQuestion.topicId),
     [currentQuestion.topicId],
   );
+  const userProfile = useMemo<DriverProfile>(
+    () => ({
+      ...demoUserProfile,
+      ...progress.user,
+    }),
+    [progress.user],
+  );
 
-  const progress = Math.round(((currentQuestionIndex + 1) / questions.length) * 100);
+  const questionProgress = Math.round(((currentQuestionIndex + 1) / questions.length) * 100);
 
   function handleValidateAnswer() {
     if (!selectedAnswerId) {
@@ -68,22 +86,32 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
         isCorrect,
       },
     ];
+    const nextCorrectionStatuses =
+      isCorrect && !isReviewSession
+        ? correctionStatuses
+        : {
+            ...correctionStatuses,
+            [currentQuestion.id]: getAutomaticCorrectionStatusAfterAnswer(isCorrect),
+          };
 
     setAnswerRecords(nextAnswerRecords);
-    setCorrectionStatuses((statuses) => {
-      if (isCorrect && !isReviewSession) {
-        return statuses;
-      }
-
-      return {
-        ...statuses,
-        [currentQuestion.id]: getAutomaticCorrectionStatusAfterAnswer(isCorrect),
-      };
-    });
+    setCorrectionStatuses(nextCorrectionStatuses);
     setSelectedAnswerId(null);
 
     if (currentQuestionIndex === questions.length - 1) {
-      setCompletedDurationSeconds(Math.max(1, Math.round((Date.now() - startedAt) / 1000)));
+      const completedAt = new Date().toISOString();
+      const nextDurationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      const trainingResult = calculateTrainingResult(questions, demoTopics, nextAnswerRecords);
+
+      onProgressChange(
+        applyCompletedTrainingToProgress(progress, {
+          completedAt,
+          correctionStatuses: nextCorrectionStatuses,
+          successRate: trainingResult.successRate,
+          xpGained: trainingResult.xpGained,
+        }),
+      );
+      setCompletedDurationSeconds(nextDurationSeconds);
       setIsFinished(true);
       return;
     }
@@ -129,12 +157,20 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
       return;
     }
 
-    setCorrectionStatuses((statuses) =>
-      buildViewedCorrectionStatuses(answerRecords, {
-        ...buildInitialCorrectionStatuses(answerRecords),
-        ...statuses,
-      }),
-    );
+    const nextCorrectionStatuses = buildViewedCorrectionStatuses(answerRecords, {
+      ...buildInitialCorrectionStatuses(answerRecords),
+      ...correctionStatuses,
+    });
+
+    setCorrectionStatuses(nextCorrectionStatuses);
+    onProgressChange({
+      ...progress,
+      correctionStatuses: {
+        ...progress.correctionStatuses,
+        ...nextCorrectionStatuses,
+      },
+      updatedAt: new Date().toISOString(),
+    });
     setIsViewingCorrections(true);
   }
 
@@ -161,7 +197,7 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
         onNewSeries={() => resetTraining(null)}
         onViewCorrections={handleViewCorrections}
         questions={questions}
-        userProfile={demoUserProfile}
+        userProfile={userProfile}
       />
     );
   }
@@ -185,7 +221,7 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
         </View>
 
         <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          <View style={[styles.progressFill, { width: `${questionProgress}%` }]} />
         </View>
 
         <View style={styles.questionCard}>
