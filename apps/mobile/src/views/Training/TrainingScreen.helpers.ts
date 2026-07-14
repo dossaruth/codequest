@@ -1,4 +1,4 @@
-import type { Question, QuestionDifficulty, Topic } from '../../domain/codequest';
+import type { MistakeStatus, Question, QuestionDifficulty, Topic } from '../../domain/codequest';
 
 export type TrainingAnswerRecord = {
   questionId: string;
@@ -29,6 +29,15 @@ export type TrainingCorrectionItem = {
   topicLabel: string;
 };
 
+export type CorrectionStatusByQuestionId = Record<string, MistakeStatus>;
+
+export type MistakeStatusOption = {
+  description: string;
+  nextReviewHint: string;
+  status: MistakeStatus;
+  title: string;
+};
+
 export type TrainingResultSummary = {
   score: number;
   successRate: number;
@@ -43,6 +52,28 @@ export type TrainingResultSummary = {
 const XP_PER_CORRECT_ANSWER = 12;
 const PERFECT_SERIES_BONUS_XP = 20;
 const TOPIC_STRENGTH_THRESHOLD = 80;
+export const DEFAULT_CORRECTION_STATUS: MistakeStatus = 'to_review';
+
+export const MISTAKE_STATUS_OPTIONS: MistakeStatusOption[] = [
+  {
+    description: 'La notion doit être reprise calmement avant une nouvelle série.',
+    nextReviewHint: 'À revoir demain',
+    status: 'not_understood',
+    title: 'Non comprise',
+  },
+  {
+    description: "La notion est identifiée, mais elle mérite encore de l'entraînement.",
+    nextReviewHint: 'À revoir dans 3 jours',
+    status: 'to_review',
+    title: 'À revoir',
+  },
+  {
+    description: 'La correction est comprise et peut être espacée.',
+    nextReviewHint: 'À revoir dans 1 semaine',
+    status: 'mastered',
+    title: 'Maîtrisée',
+  },
+];
 
 export function calculateTrainingResult(
   questions: Question[],
@@ -97,6 +128,26 @@ export function buildCorrectionItems(
       };
     })
     .filter((item): item is TrainingCorrectionItem => item !== null);
+}
+
+export function buildInitialCorrectionStatuses(
+  answerRecords: TrainingAnswerRecord[],
+): CorrectionStatusByQuestionId {
+  return answerRecords.reduce<CorrectionStatusByQuestionId>((statuses, answer) => {
+    if (!answer.isCorrect) {
+      statuses[answer.questionId] = DEFAULT_CORRECTION_STATUS;
+    }
+
+    return statuses;
+  }, {});
+}
+
+export function getMistakeStatusOption(status: MistakeStatus) {
+  return (
+    MISTAKE_STATUS_OPTIONS.find((option) => option.status === status) ??
+    MISTAKE_STATUS_OPTIONS.find((option) => option.status === DEFAULT_CORRECTION_STATUS) ??
+    MISTAKE_STATUS_OPTIONS[0]
+  );
 }
 
 export function getResultFeedback(successRate: number): ResultFeedback {

@@ -406,4 +406,67 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
+  correctionStatusBlock: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+    padding: 12,
+  },
+  correctionStatusHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  correctionStatusValue: {
+    color: '#1D4ED8',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  correctionStatusDescription: {
+    color: '#374151',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  correctionStatusHint: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 17,
+  },
+  correctionStatusOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 2,
+  },
+  correctionStatusButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  correctionStatusButtonPressed: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#93C5FD',
+  },
+  correctionStatusButtonSelected: {
+    backgroundColor: '#DBEAFE',
+    borderColor: '#2563EB',
+  },
+  correctionStatusButtonText: {
+    color: '#374151',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  correctionStatusButtonTextSelected: {
+    color: '#1D4ED8',
+  },
 });
