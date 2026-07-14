@@ -10,8 +10,23 @@ export type TrainingTopicResult = {
   id: string;
   label: string;
   correctAnswers: number;
+  mistakeCount: number;
   totalAnswers: number;
   successRate: number;
+};
+
+export type ResultFeedback = {
+  title: string;
+  message: string;
+};
+
+export type TrainingCorrectionItem = {
+  id: string;
+  correctAnswerLabels: string[];
+  explanation: string;
+  question: Question;
+  selectedAnswerLabel: string;
+  topicLabel: string;
 };
 
 export type TrainingResultSummary = {
@@ -19,6 +34,8 @@ export type TrainingResultSummary = {
   successRate: number;
   xpGained: number;
   missedAnswers: TrainingAnswerRecord[];
+  feedback: ResultFeedback;
+  analysis: string;
   strengths: TrainingTopicResult[];
   weaknesses: TrainingTopicResult[];
 };
@@ -33,19 +50,109 @@ export function calculateTrainingResult(
   answerRecords: TrainingAnswerRecord[],
 ): TrainingResultSummary {
   const score = answerRecords.filter((answer) => answer.isCorrect).length;
-  const successRate = Math.round((score / questions.length) * 100);
-  const xpGained = score * XP_PER_CORRECT_ANSWER + (score === questions.length ? PERFECT_SERIES_BONUS_XP : 0);
+  const totalQuestions = questions.length;
+  const successRate = totalQuestions === 0 ? 0 : Math.round((score / totalQuestions) * 100);
+  const xpGained =
+    score * XP_PER_CORRECT_ANSWER + (totalQuestions > 0 && score === totalQuestions ? PERFECT_SERIES_BONUS_XP : 0);
   const missedAnswers = answerRecords.filter((answer) => !answer.isCorrect);
   const topicResults = buildTopicResults(questions, topics, answerRecords);
+  const strengths = topicResults.filter((topic) => topic.successRate >= TOPIC_STRENGTH_THRESHOLD);
+  const weaknesses = topicResults.filter((topic) => topic.successRate < TOPIC_STRENGTH_THRESHOLD);
 
   return {
     score,
     successRate,
     xpGained,
     missedAnswers,
-    strengths: topicResults.filter((topic) => topic.successRate >= TOPIC_STRENGTH_THRESHOLD),
-    weaknesses: topicResults.filter((topic) => topic.successRate < TOPIC_STRENGTH_THRESHOLD),
+    feedback: getResultFeedback(successRate),
+    analysis: getResultAnalysis({ successRate, topicResults }),
+    strengths,
+    weaknesses,
   };
+}
+
+export function buildCorrectionItems(
+  questions: Question[],
+  topics: Topic[],
+  answerRecords: TrainingAnswerRecord[],
+): TrainingCorrectionItem[] {
+  return answerRecords
+    .filter((answer) => !answer.isCorrect)
+    .map((answer) => {
+      const question = questions.find((item) => item.id === answer.questionId);
+
+      if (!question) {
+        return null;
+      }
+
+      const topic = topics.find((item) => item.id === question.topicId);
+
+      return {
+        id: answer.questionId,
+        correctAnswerLabels: getCorrectAnswerLabels(question),
+        explanation: question.explanation,
+        question,
+        selectedAnswerLabel: getAnswerLabel(question, answer.selectedAnswerId),
+        topicLabel: topic?.label ?? 'Thème',
+      };
+    })
+    .filter((item): item is TrainingCorrectionItem => item !== null);
+}
+
+export function getResultFeedback(successRate: number): ResultFeedback {
+  if (successRate === 100) {
+    return {
+      title: 'Excellent !',
+      message: 'Tu maîtrises parfaitement cette série.',
+    };
+  }
+
+  if (successRate >= 80) {
+    return {
+      title: 'Très bon résultat !',
+      message: 'Encore un petit effort pour atteindre la maîtrise complète.',
+    };
+  }
+
+  if (successRate >= 50) {
+    return {
+      title: 'Tu progresses !',
+      message: 'Regarde tes erreurs pour consolider tes acquis.',
+    };
+  }
+
+  return {
+    title: 'Ne lâche rien !',
+    message: 'Chaque erreur est une occasion d’apprendre.',
+  };
+}
+
+export function getResultAnalysis({
+  successRate,
+  topicResults,
+}: {
+  successRate: number;
+  topicResults: TrainingTopicResult[];
+}) {
+  const weakestTopic = getWeakestTopic(topicResults);
+  const weakestTopicSentence =
+    topicResults.length > 1 && weakestTopic
+      ? ` Le thème ${weakestTopic.label} est celui qui nécessite le plus de travail.`
+      : '';
+
+  if (successRate === 100) {
+    return `Excellent résultat. Ce thème semble bien maîtrisé.${weakestTopicSentence}`;
+  }
+
+  if (successRate >= 80) {
+    return `Très bon niveau sur cette série. Revois tes dernières erreurs pour atteindre une maîtrise complète.${weakestTopicSentence}`;
+  }
+
+  if (successRate >= 50) {
+    return `Tu progresses, mais certaines notions restent fragiles. Une révision ciblée t’aidera à les consolider.${weakestTopicSentence}`;
+  }
+
+  return `Cette série montre que ce thème doit encore être renforcé. Consulte tes corrections avant de commencer une nouvelle série.${weakestTopicSentence}`;
 }
 
 export function getDifficultyLabel(difficulty: QuestionDifficulty) {
@@ -65,10 +172,36 @@ export function formatDuration(totalSeconds: number) {
   const seconds = totalSeconds % 60;
 
   if (minutes === 0) {
-    return `${seconds}s`;
+    return `${seconds} s`;
   }
 
-  return `${minutes}min ${seconds.toString().padStart(2, '0')}s`;
+  return `${minutes} min ${seconds.toString().padStart(2, '0')} s`;
+}
+
+function getWeakestTopic(topicResults: TrainingTopicResult[]) {
+  if (topicResults.length === 0) {
+    return null;
+  }
+
+  return topicResults.reduce((weakestTopic, topic) => {
+    if (topic.successRate < weakestTopic.successRate) {
+      return topic;
+    }
+
+    if (topic.successRate === weakestTopic.successRate && topic.mistakeCount > weakestTopic.mistakeCount) {
+      return topic;
+    }
+
+    return weakestTopic;
+  });
+}
+
+function getAnswerLabel(question: Question, answerId: string) {
+  return question.answers.find((answer) => answer.id === answerId)?.label ?? 'Réponse sélectionnée non disponible';
+}
+
+function getCorrectAnswerLabels(question: Question) {
+  return question.correctAnswerIds.map((answerId) => getAnswerLabel(question, answerId));
 }
 
 function buildTopicResults(
@@ -89,16 +222,19 @@ function buildTopicResults(
       id: question.topicId,
       label: topicLabel,
       correctAnswers: 0,
+      mistakeCount: 0,
       totalAnswers: 0,
       successRate: 0,
     };
 
     const nextCorrectAnswers = current.correctAnswers + (answer.isCorrect ? 1 : 0);
+    const nextMistakeCount = current.mistakeCount + (answer.isCorrect ? 0 : 1);
     const nextTotalAnswers = current.totalAnswers + 1;
 
     accumulator[question.topicId] = {
       ...current,
       correctAnswers: nextCorrectAnswers,
+      mistakeCount: nextMistakeCount,
       totalAnswers: nextTotalAnswers,
       successRate: Math.round((nextCorrectAnswers / nextTotalAnswers) * 100),
     };
