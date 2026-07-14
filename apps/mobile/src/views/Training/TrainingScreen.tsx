@@ -17,12 +17,33 @@ type AnswerRecord = {
   isCorrect: boolean;
 };
 
+type TopicResult = {
+  id: string;
+  label: string;
+  correctAnswers: number;
+  totalAnswers: number;
+  successRate: number;
+};
+
+const XP_PER_CORRECT_ANSWER = 12;
+const PERFECT_SERIES_BONUS_XP = 20;
+
 export function TrainingScreen({ onExit }: TrainingScreenProps) {
-  const questions = demoQuestions;
+  const [reviewQuestionIds, setReviewQuestionIds] = useState<string[] | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [answerRecords, setAnswerRecords] = useState<AnswerRecord[]>([]);
+  const [startedAt, setStartedAt] = useState(() => Date.now());
+  const [completedDurationSeconds, setCompletedDurationSeconds] = useState<number | null>(null);
   const [isFinished, setIsFinished] = useState(false);
+
+  const questions = useMemo(() => {
+    if (!reviewQuestionIds) {
+      return demoQuestions;
+    }
+
+    return demoQuestions.filter((question) => reviewQuestionIds.includes(question.id));
+  }, [reviewQuestionIds]);
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentTopic = useMemo(
@@ -30,7 +51,6 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
     [currentQuestion.topicId],
   );
 
-  const score = answerRecords.filter((answer) => answer.isCorrect).length;
   const progress = Math.round(((currentQuestionIndex + 1) / questions.length) * 100);
 
   function handleValidateAnswer() {
@@ -52,6 +72,7 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
     setSelectedAnswerId(null);
 
     if (currentQuestionIndex === questions.length - 1) {
+      setCompletedDurationSeconds(Math.max(1, Math.round((Date.now() - startedAt) / 1000)));
       setIsFinished(true);
       return;
     }
@@ -59,20 +80,37 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
     setCurrentQuestionIndex((index) => index + 1);
   }
 
-  function handleRestart() {
+  function resetTraining(nextReviewQuestionIds: string[] | null) {
+    setReviewQuestionIds(nextReviewQuestionIds);
     setCurrentQuestionIndex(0);
     setSelectedAnswerId(null);
     setAnswerRecords([]);
+    setStartedAt(Date.now());
+    setCompletedDurationSeconds(null);
     setIsFinished(false);
+  }
+
+  function handleReviewMistakes() {
+    const missedQuestionIds = answerRecords
+      .filter((answer) => !answer.isCorrect)
+      .map((answer) => answer.questionId);
+
+    if (missedQuestionIds.length === 0) {
+      return;
+    }
+
+    resetTraining(missedQuestionIds);
   }
 
   if (isFinished) {
     return (
       <TrainingResult
-        score={score}
-        totalQuestions={questions.length}
+        answerRecords={answerRecords}
+        durationSeconds={completedDurationSeconds ?? 0}
         onExit={onExit}
-        onRestart={handleRestart}
+        onNewSeries={() => resetTraining(null)}
+        onReviewMistakes={handleReviewMistakes}
+        questions={questions}
       />
     );
   }
@@ -82,7 +120,10 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
       <StatusBar style="auto" />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable style={styles.secondaryButton} onPress={onExit}>
+          <Pressable
+            style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryButtonPressed]}
+            onPress={onExit}
+          >
             <Text style={styles.secondaryButtonText}>Retour</Text>
           </Pressable>
           <Text style={styles.headerMeta}>
@@ -95,9 +136,11 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
         </View>
 
         <View style={styles.questionCard}>
-          <Text style={styles.topicLabel}>{currentTopic?.label ?? 'Theme'}</Text>
+          <Text style={styles.topicLabel}>{currentTopic?.label ?? 'Thème'}</Text>
           <Text style={styles.questionText}>{currentQuestion.prompt}</Text>
-          <Text style={styles.difficultyText}>Difficulte: {difficultyLabel(currentQuestion)}</Text>
+          <View style={styles.difficultyBadge}>
+            <Text style={styles.difficultyText}>Difficulté : {difficultyLabel(currentQuestion)}</Text>
+          </View>
         </View>
 
         <View style={styles.answerList}>
@@ -107,7 +150,11 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
             return (
               <Pressable
                 key={answer.id}
-                style={[styles.answerButton, isSelected && styles.answerButtonSelected]}
+                style={({ pressed }) => [
+                  styles.answerButton,
+                  pressed && styles.answerButtonPressed,
+                  isSelected && styles.answerButtonSelected,
+                ]}
                 onPress={() => setSelectedAnswerId(answer.id)}
               >
                 <Text style={[styles.answerText, isSelected && styles.answerTextSelected]}>
@@ -119,12 +166,16 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
         </View>
 
         <Pressable
-          style={[styles.primaryButton, !selectedAnswerId && styles.primaryButtonDisabled]}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            !selectedAnswerId && styles.primaryButtonDisabled,
+            pressed && selectedAnswerId && styles.primaryButtonPressed,
+          ]}
           onPress={handleValidateAnswer}
           disabled={!selectedAnswerId}
         >
           <Text style={styles.primaryButtonText}>
-            {currentQuestionIndex === questions.length - 1 ? 'Terminer la serie' : 'Valider'}
+            {currentQuestionIndex === questions.length - 1 ? 'Terminer la série' : 'Valider'}
           </Text>
         </Pressable>
       </ScrollView>
@@ -133,49 +184,185 @@ export function TrainingScreen({ onExit }: TrainingScreenProps) {
 }
 
 function TrainingResult({
-  score,
-  totalQuestions,
+  answerRecords,
+  durationSeconds,
   onExit,
-  onRestart,
+  onNewSeries,
+  onReviewMistakes,
+  questions,
 }: {
-  score: number;
-  totalQuestions: number;
+  answerRecords: AnswerRecord[];
+  durationSeconds: number;
   onExit: () => void;
-  onRestart: () => void;
+  onNewSeries: () => void;
+  onReviewMistakes: () => void;
+  questions: Question[];
 }) {
+  const score = answerRecords.filter((answer) => answer.isCorrect).length;
+  const totalQuestions = questions.length;
   const successRate = Math.round((score / totalQuestions) * 100);
+  const xpGained = score * XP_PER_CORRECT_ANSWER + (score === totalQuestions ? PERFECT_SERIES_BONUS_XP : 0);
+  const missedAnswers = answerRecords.filter((answer) => !answer.isCorrect);
+  const topicResults = buildTopicResults(questions, answerRecords);
+  const strengths = topicResults.filter((topic) => topic.successRate >= 80);
+  const weaknesses = topicResults.filter((topic) => topic.successRate < 80);
+  const canReviewMistakes = missedAnswers.length > 0;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="auto" />
-      <View style={styles.resultContainer}>
-        <Text style={styles.resultEyebrow}>Serie terminee</Text>
+      <ScrollView contentContainerStyle={styles.resultContainer} showsVerticalScrollIndicator={false}>
+        <Text style={styles.resultEyebrow}>Série terminée</Text>
         <Text style={styles.resultTitle}>
           {score}/{totalQuestions}
         </Text>
         <Text style={styles.resultSubtitle}>
-          Taux de reussite: {successRate}%. Les corrections detaillees arriveront dans l'ecran
-          resultat.
+          Vous avez terminé cette série avec {successRate}% de réussite.
         </Text>
-        <Pressable style={styles.primaryButton} onPress={onRestart}>
-          <Text style={styles.primaryButtonText}>Recommencer</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButtonWide} onPress={onExit}>
-          <Text style={styles.secondaryButtonText}>Retour au tableau de bord</Text>
-        </Pressable>
-      </View>
+
+        <View style={styles.resultStatsGrid}>
+          <ResultStat label="XP gagnés" value={`+${xpGained}`} helper="Selon vos bonnes réponses" />
+          <ResultStat label="Progression" value={`${successRate}%`} helper="réussite sur cette série" />
+          <ResultStat label="Temps réalisé" value={formatDuration(durationSeconds)} helper="durée totale" />
+        </View>
+
+        <ResultTopicSection
+          emptyText="Aucun point fort net sur cette série."
+          title="Points forts"
+          topics={strengths}
+        />
+        <ResultTopicSection
+          emptyText="Aucun thème prioritaire à revoir."
+          title="À travailler"
+          topics={weaknesses}
+        />
+
+        <View style={styles.resultActions}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.primaryButton,
+              !canReviewMistakes && styles.primaryButtonDisabled,
+              pressed && canReviewMistakes && styles.primaryButtonPressed,
+            ]}
+            onPress={onReviewMistakes}
+            disabled={!canReviewMistakes}
+          >
+            <Text style={styles.primaryButtonText}>Revoir mes erreurs</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.secondaryButtonWide, pressed && styles.secondaryButtonPressed]}
+            onPress={onNewSeries}
+          >
+            <Text style={styles.secondaryButtonText}>Nouvelle série</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.secondaryButtonWide, pressed && styles.secondaryButtonPressed]}
+            onPress={onExit}
+          >
+            <Text style={styles.secondaryButtonText}>Retour à l'accueil</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+function ResultStat({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <View style={styles.resultStatCard}>
+      <Text style={styles.resultStatLabel}>{label}</Text>
+      <Text style={styles.resultStatValue}>{value}</Text>
+      <Text style={styles.resultStatHelper}>{helper}</Text>
+    </View>
+  );
+}
+
+function ResultTopicSection({
+  emptyText,
+  title,
+  topics,
+}: {
+  emptyText: string;
+  title: string;
+  topics: TopicResult[];
+}) {
+  return (
+    <View style={styles.resultSection}>
+      <Text style={styles.resultSectionTitle}>{title}</Text>
+      {topics.length === 0 ? (
+        <Text style={styles.resultSectionEmpty}>{emptyText}</Text>
+      ) : (
+        topics.map((topic) => (
+          <View key={topic.id} style={styles.resultTopicItem}>
+            <View style={styles.resultTopicTextGroup}>
+              <Text style={styles.resultTopicLabel}>{topic.label}</Text>
+              <Text style={styles.resultTopicMeta}>
+                {topic.correctAnswers}/{topic.totalAnswers} bonnes réponses
+              </Text>
+            </View>
+            <Text style={styles.resultTopicScore}>{topic.successRate}%</Text>
+          </View>
+        ))
+      )}
+    </View>
+  );
+}
+
+function buildTopicResults(questions: Question[], answerRecords: AnswerRecord[]): TopicResult[] {
+  const results = answerRecords.reduce<Record<string, TopicResult>>((accumulator, answer) => {
+    const question = questions.find((item) => item.id === answer.questionId);
+
+    if (!question) {
+      return accumulator;
+    }
+
+    const topic = demoTopics.find((item) => item.id === question.topicId);
+    const topicLabel = topic?.label ?? 'Thème';
+    const current = accumulator[question.topicId] ?? {
+      id: question.topicId,
+      label: topicLabel,
+      correctAnswers: 0,
+      totalAnswers: 0,
+      successRate: 0,
+    };
+
+    const nextCorrectAnswers = current.correctAnswers + (answer.isCorrect ? 1 : 0);
+    const nextTotalAnswers = current.totalAnswers + 1;
+
+    accumulator[question.topicId] = {
+      ...current,
+      correctAnswers: nextCorrectAnswers,
+      totalAnswers: nextTotalAnswers,
+      successRate: Math.round((nextCorrectAnswers / nextTotalAnswers) * 100),
+    };
+
+    return accumulator;
+  }, {});
+
+  return Object.values(results);
+}
+
 function difficultyLabel(question: Question) {
   if (question.difficulty === 'easy') {
-    return 'facile';
+    return 'Facile';
   }
 
   if (question.difficulty === 'medium') {
-    return 'moyenne';
+    return 'Moyenne';
   }
 
-  return 'difficile';
+  return 'Difficile';
+}
+
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes === 0) {
+    return `${seconds}s`;
+  }
+
+  return `${minutes}min ${seconds.toString().padStart(2, '0')}s`;
 }

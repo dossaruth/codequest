@@ -16,7 +16,7 @@ Construire le MVP mobile avec des donnees locales:
 
 - tableau de bord;
 - mission du jour;
-- entrainement;
+- entraînement;
 - resultats;
 - erreurs a revoir;
 - profil conducteur.
@@ -44,7 +44,7 @@ npm run typecheck
 src/
   data/
     dashboard.ts      Donnees preparees pour le tableau de bord
-    demoData.ts       Donnees locales de demonstration
+    demoData.ts       Données locales de démonstration
   domain/
     codequest.ts      Types metier principaux
   views/
@@ -60,4 +60,4 @@ src/
 
 ## Statut
 
-Base Expo TypeScript initialisee avec un premier tableau de bord, des donnees locales de demonstration et un mode entrainement simple.
+Base Expo TypeScript initialisée avec un premier tableau de bord, des données locales de démonstration et un mode entraînement simple.

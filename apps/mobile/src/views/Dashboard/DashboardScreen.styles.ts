@@ -107,13 +107,15 @@ export const styles = StyleSheet.create({
   },
   metricValue: {
     color: '#111827',
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '800',
+    lineHeight: 27,
     marginTop: 8,
   },
   metricHelper: {
     color: '#6B7280',
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 15,
     marginTop: 4,
   },
   section: {
@@ -181,6 +183,9 @@ export const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 16,
     paddingVertical: 13,
+  },
+  primaryButtonPressed: {
+    backgroundColor: '#1D4ED8',
   },
   primaryButtonText: {
     color: '#FFFFFF',

@@ -26,7 +26,7 @@ export function DashboardScreen({ onStartTraining }: DashboardScreenProps) {
           </View>
           <View style={styles.streakBadge}>
             <Text style={styles.streakValue}>{dashboardData.user.streakDays}j</Text>
-            <Text style={styles.streakLabel}>serie</Text>
+            <Text style={styles.streakLabel}>série</Text>
           </View>
         </View>
 
@@ -41,24 +41,24 @@ export function DashboardScreen({ onStartTraining }: DashboardScreenProps) {
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${xpProgress}%` }]} />
           </View>
-          <Text style={styles.progressCaption}>{xpProgress}% du niveau complete</Text>
+          <Text style={styles.progressCaption}>{xpProgress}% du niveau complété</Text>
         </View>
 
         <View style={styles.statsGrid}>
           <MetricCard
-            label="Progression examen"
+            label="Maîtrise globale"
             value={`${dashboardData.readiness.examProgress}%`}
-            helper="niveau global"
+            helper="Préparation actuelle"
           />
           <MetricCard
             label="CodeQuest Score"
             value={`${dashboardData.readiness.score}/100`}
-            helper="pret bientot"
+            helper="Indice de préparation"
           />
           <MetricCard
-            label="Objectif estime"
-            value={`${dashboardData.readiness.estimatedTrainingDays} jours`}
-            helper="entrainement restant"
+            label="Objectif estimé"
+            value={`≈ ${dashboardData.readiness.estimatedTrainingDays} jours`}
+            helper="Estimation basée sur votre progression."
           />
         </View>
 
@@ -68,7 +68,7 @@ export function DashboardScreen({ onStartTraining }: DashboardScreenProps) {
             <Text style={styles.sectionMeta}>{dashboardData.dailyMission.durationMinutes} min</Text>
           </View>
           <Text style={styles.sectionDescription}>
-            Objectif: atteindre {dashboardData.dailyMission.targetProgress}% de maitrise globale.
+            Objectif : atteindre {dashboardData.dailyMission.targetProgress}% de maîtrise globale.
           </Text>
           <View style={styles.taskList}>
             {dashboardData.dailyMission.tasks.map((task) => (
@@ -80,14 +80,17 @@ export function DashboardScreen({ onStartTraining }: DashboardScreenProps) {
               </View>
             ))}
           </View>
-          <Pressable style={styles.primaryButton} onPress={onStartTraining}>
-            <Text style={styles.primaryButtonText}>Commencer l'entrainement</Text>
+          <Pressable
+            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+            onPress={onStartTraining}
+          >
+            <Text style={styles.primaryButtonText}>Commencer l'entraînement</Text>
           </Pressable>
         </View>
 
         <View style={styles.topicsRow}>
           <TopicPanel title="Points forts" tone="success" topics={dashboardData.strengths} />
-          <TopicPanel title="A travailler" tone="warning" topics={dashboardData.weaknesses} />
+          <TopicPanel title="À travailler" tone="warning" topics={dashboardData.weaknesses} />
         </View>
       </ScrollView>
     </SafeAreaView>
