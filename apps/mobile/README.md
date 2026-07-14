@@ -52,8 +52,12 @@ src/
       DashboardScreen.tsx
       DashboardScreen.styles.ts
       index.ts
+    Training/
+      TrainingScreen.tsx
+      TrainingScreen.styles.ts
+      index.ts
 ```
 
 ## Statut
 
-Base Expo TypeScript initialisee avec un premier tableau de bord et des donnees locales de demonstration.
+Base Expo TypeScript initialisee avec un premier tableau de bord, des donnees locales de demonstration et un mode entrainement simple.

@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
 import { dashboardData } from '../../data/dashboard';
 import type { DashboardTopic } from '../../data/dashboard';
@@ -8,7 +8,11 @@ import { styles } from './DashboardScreen.styles';
 
 const formatXp = new Intl.NumberFormat('fr-FR');
 
-export function DashboardScreen() {
+type DashboardScreenProps = {
+  onStartTraining: () => void;
+};
+
+export function DashboardScreen({ onStartTraining }: DashboardScreenProps) {
   const xpProgress = Math.round((dashboardData.user.xp / dashboardData.user.nextLevelXp) * 100);
 
   return (
@@ -76,6 +80,9 @@ export function DashboardScreen() {
               </View>
             ))}
           </View>
+          <Pressable style={styles.primaryButton} onPress={onStartTraining}>
+            <Text style={styles.primaryButtonText}>Commencer l'entrainement</Text>
+          </Pressable>
         </View>
 
         <View style={styles.topicsRow}>

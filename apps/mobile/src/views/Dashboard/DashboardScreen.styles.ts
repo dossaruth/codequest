@@ -174,6 +174,19 @@ export const styles = StyleSheet.create({
     color: '#6B7280',
     textDecorationLine: 'line-through',
   },
+  primaryButton: {
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
   topicsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
